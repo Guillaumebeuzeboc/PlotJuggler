@@ -52,6 +52,7 @@ find_package(Qt5 REQUIRED COMPONENTS
     Svg)
 
 find_package(Qt5 QUIET COMPONENTS WebSockets)
+find_package(Qt5 QUIET COMPONENTS SerialPort)
 
 set( QT_LINK_LIBRARIES
     Qt5::Core
@@ -73,6 +74,13 @@ if( NOT Qt5WebSockets_FOUND)
     add_definitions( -DQWT_NO_SVG )
 else()
     set( QT_LINK_LIBRARIES ${QT_LINK_LIBRARIES} Qt5::WebSockets)
+endif()
+
+if( NOT Qt5SerialPort_FOUND)
+	message(STATUS "Can't find Qt5SerialPort in your system. Have you tried [sudo apt-get install libqt5serialport-dev] ?")
+    add_definitions( -DQWT_NO_SVG )
+else()
+	set( QT_LINK_LIBRARIES ${QT_LINK_LIBRARIES} Qt5::SerialPort)
 endif()
 
 if (NOT CMAKE_BUILD_TYPE)
@@ -123,6 +131,7 @@ include_directories(
     ${Qt5Widgets_INCLUDE_DIRS}
     ${Qt5Concurrent_INCLUDE_DIRS}
     ${Qt5PrintSupport_INCLUDE_DIRS}
+    ${Qt5SerialPort_INCLUDE_DIRS}
     ${Qt5Xml_INCLUDE_DIRS}
     ${Qt5WebSockets_INCLUDE_DIRS}
     ${Qt5Multimedia_INCLUDE_DIRS}
@@ -174,6 +183,11 @@ else()
         message(STATUS "Qt5WebSockets not found. Skipping plugins/DataStreamWebSocket")
     else()
         add_subdirectory( plugins/DataStreamWebSocket )
+    endif()
+    if( NOT Qt5SerialPort_FOUND)
+	    message(STATUS "Qt5SerialPort not found. Skipping plugins/DataSerialPort")
+    else()
+	    add_subdirectory( plugins/DataSerialPort)
     endif()
 endif()
 
