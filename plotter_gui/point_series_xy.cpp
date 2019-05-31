@@ -52,7 +52,6 @@ bool PointSeriesXY::updateCache()
     }
 
     const size_t data_size =  std::min(_x_axis->size(), _y_axis->size());
-    
     if(data_size == 0)
     {
         _bounding_box = QRectF();
@@ -67,16 +66,9 @@ bool PointSeriesXY::updateCache()
 
     _cached_curve.resize( data_size );
 
-    const double EPS = std::numeric_limits<double>::epsilon();
 
     for (size_t i=0; i<data_size; i++ )
     {
-        if( Abs( _x_axis->at(i).x  - _y_axis->at(i).x ) >  EPS)
-        {
-            _bounding_box = QRectF();
-            _cached_curve.clear();
-            throw std::runtime_error("X and Y axis don't share the same time axis");
-        }
 
         const QPointF p(_x_axis->at(i).y,
                         _y_axis->at(i).y );
