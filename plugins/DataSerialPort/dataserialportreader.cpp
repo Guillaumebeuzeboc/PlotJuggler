@@ -27,7 +27,7 @@ DataSerialPortReader::~DataSerialPortReader(){
     shutdown();
 }
 
-bool DataSerialPortReader::start()
+bool DataSerialPortReader::start(QStringList*)
 {		
 		running_ = true;
 		bool ok;
