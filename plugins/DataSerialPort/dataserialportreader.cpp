@@ -121,10 +121,8 @@ void DataSerialPortReader::handleReadyRead()
 
 		if (plotIt == numeric_plots.end())
 		{
-		  qDebug() << "add " << line_list.at(0) << "to the plot";
 		  plotIt = dataMap().addNumeric(name_str);
 		}
-		qDebug() << "add " << line_list.at(0) << " value";
 		plotIt->second.pushBack({ time, value });
 	  }
 	}
