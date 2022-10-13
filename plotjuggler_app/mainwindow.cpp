@@ -76,7 +76,6 @@ MainWindow::MainWindow(const QCommandLineParser& commandline_parser, QWidget* pa
   , _streaming_shortcut(QKeySequence(Qt::CTRL + Qt::Key_Space), this)
   , _playback_shotcut(Qt::Key_Space, this)
   , _minimized(false)
-  , _message_parser_factory(new MessageParserFactory)
   , _active_streamer_plugin(nullptr)
   , _disable_undo_logging(false)
   , _tracker_time(0)
@@ -86,6 +85,7 @@ MainWindow::MainWindow(const QCommandLineParser& commandline_parser, QWidget* pa
   , _recent_layout_files(new QMenu())
 {
   QLocale::setDefault(QLocale::c());  // set as default
+  setAcceptDrops(true);
 
   _test_option = commandline_parser.isSet("test");
   _autostart_publishers = commandline_parser.isSet("publish");
@@ -121,9 +121,12 @@ MainWindow::MainWindow(const QCommandLineParser& commandline_parser, QWidget* pa
       _skin_path = path.absolutePath();
     }
   }
-  if (commandline_parser.isSet("window_title")){
+  if (commandline_parser.isSet("window_title"))
+  {
     setWindowTitle(commandline_parser.value("window_title"));
-  } else {
+  }
+  else
+  {
     QFile fileTitle(_skin_path + "/mainwindow_title.txt");
     if (fileTitle.open(QIODevice::ReadOnly))
     {
@@ -364,11 +367,17 @@ MainWindow::MainWindow(const QCommandLineParser& commandline_parser, QWidget* pa
   loadStyleSheet(tr(":/resources/stylesheet_%1.qss").arg(theme));
 
   // builtin messageParsers
-  _message_parser_factory->insert({ "JSON", std::make_shared<JSON_ParserCreator>() });
-  _message_parser_factory->insert({ "CBOR", std::make_shared<CBOR_ParserCreator>() });
-  _message_parser_factory->insert({ "BSON", std::make_shared<BSON_ParserCreator>() });
-  _message_parser_factory->insert(
-      { "MessagePack", std::make_shared<MessagePack_ParserCreator>() });
+  auto json_parser = std::make_shared<JSON_ParserFactory>();
+  _parser_factories.insert({ json_parser->encoding(), json_parser });
+
+  auto cbor_parser = std::make_shared<CBOR_ParserFactory>();
+  _parser_factories.insert({ cbor_parser->encoding(), cbor_parser });
+
+  auto bson_parser = std::make_shared<BSON_ParserFactory>();
+  _parser_factories.insert({ bson_parser->encoding(), bson_parser });
+
+  auto msgpack = std::make_shared<MessagePack_ParserFactory>();
+  _parser_factories.insert({ msgpack->encoding(), msgpack });
 
   if (!_default_streamer.isEmpty())
   {
@@ -618,7 +627,7 @@ QStringList MainWindow::initializePlugins(QString directory_name)
       DataLoader* loader = qobject_cast<DataLoader*>(plugin);
       StatePublisher* publisher = qobject_cast<StatePublisher*>(plugin);
       DataStreamer* streamer = qobject_cast<DataStreamer*>(plugin);
-      MessageParserCreator* message_parser = qobject_cast<MessageParserCreator*>(plugin);
+      ParserFactoryPlugin* message_parser = qobject_cast<ParserFactoryPlugin*>(plugin);
       ToolboxPlugin* toolbox = qobject_cast<ToolboxPlugin*>(plugin);
 
       QString plugin_name;
@@ -742,7 +751,8 @@ QStringList MainWindow::initializePlugins(QString directory_name)
       }
       else if (message_parser)
       {
-        _message_parser_factory->insert(std::make_pair(plugin_name, message_parser));
+        _parser_factories.insert(
+            std::make_pair(message_parser->encoding(), message_parser));
       }
       else if (streamer)
       {
@@ -751,8 +761,6 @@ QStringList MainWindow::initializePlugins(QString directory_name)
           _default_streamer = plugin_name;
         }
         _data_streamer.insert(std::make_pair(plugin_name, streamer));
-
-        streamer->setAvailableParsers(_message_parser_factory);
 
         connect(streamer, &DataStreamer::closed, this,
                 [this]() { this->stopStreamingPlugin(); });
@@ -816,6 +824,17 @@ QStringList MainWindow::initializePlugins(QString directory_name)
       }
     }
   }
+
+  for (auto& [name, streamer] : _data_streamer)
+  {
+    streamer->setParserFactories(&_parser_factories);
+  }
+
+  for (auto& [name, loader] : _data_loader)
+  {
+    loader->setParserFactories(&_parser_factories);
+  }
+
   if (!_data_streamer.empty())
   {
     QSignalBlocker block(ui->comboStreaming);
@@ -1454,7 +1473,7 @@ std::unordered_set<std::string> MainWindow::loadDataFromFile(const FileLoadInfo&
     QString plugin_name =
         QInputDialog::getItem(this, tr("QInputDialog::getItem()"),
                               tr("Select the loader to use:"), names, 0, false, &ok);
-    if (ok && !plugin_name.isEmpty())
+    if (ok && !plugin_name.isEmpty() && (_enabled_plugins.size() == 0 || _enabled_plugins.contains(plugin_name)))
     {
       dataloader = _data_loader[plugin_name];
       last_plugin_name_used = plugin_name;
@@ -1785,6 +1804,27 @@ void MainWindow::updateReactivePlots()
       }
     }
   });
+}
+
+void MainWindow::dragEnterEvent(QDragEnterEvent* event)
+{
+  if (event->mimeData()->hasUrls())
+  {
+    event->acceptProposedAction();
+  }
+}
+
+void MainWindow::dropEvent(QDropEvent* event)
+{
+  QStringList file_names;
+  const auto urls = event->mimeData()->urls();
+
+  for (const auto& url : urls)
+  {
+    file_names << QDir::toNativeSeparators(url.toLocalFile());
+  }
+
+  loadDataFromFiles(file_names);
 }
 
 void MainWindow::on_stylesheetChanged(QString theme)

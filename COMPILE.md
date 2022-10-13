@@ -1,6 +1,6 @@
 # Compile in Linux
 
-On Ubuntu, the dependencies can be installed with the the command:
+On Ubuntu, the dependencies can be installed with the command:
 
     sudo apt -y install qtbase5-dev libqt5svg5-dev libqt5websockets5-dev \
          libqt5opengl5-dev libqt5x11extras5-dev libprotoc-dev libzmq-dev
@@ -10,7 +10,7 @@ On Fedora:
     sudo dnf install qt5-qtbase-devel qt5-qtsvg-devel qt5-websockets-devel \
          qt5-qtopendl-devel qt5-qtx11extras-devel
 
-Clone the repository into **~/plotjuggler_ws*:
+Clone the repository into **~/plotjuggler_ws**:
 
 ```
 git clone https://github.com/facontidavide/PlotJuggler.git ~/plotjuggler_ws/src/PlotJuggler
@@ -66,11 +66,31 @@ echo $VERSION
 cp -v install/bin/* AppDir/usr/bin
 
 ./linuxdeploy-x86_64.AppImage --appdir=AppDir \
-    -d ./PlotJuggler/PlotJuggler.desktop \
-    -i ./PlotJuggler/plotjuggler.png \ 
+    -d ./src/PlotJuggler/PlotJuggler.desktop \
+    -i ./src/PlotJuggler/plotjuggler.png \
     --plugin qt --output appimage
 ```
 
+# Compile in Mac
+
+On Mac, the dependencies can be installed using [brew](https://brew.sh/) with the following command:
+
+    brew install cmake qt@5 protobuf mosquitto zeromq zstd
+
+Clone the repository into **~/plotjuggler_ws**:
+
+```
+git clone https://github.com/facontidavide/PlotJuggler.git ~/plotjuggler_ws/src/PlotJuggler
+cd ~/plotjuggler_ws
+```
+    
+Then compile using cmake:
+
+```
+cmake -S src/PlotJuggler -B build/PlotJuggler -DCMAKE_INSTALL_PREFIX=install
+cmake --build build/PlotJuggler --config RelWithDebInfo --parallel --target install
+```
+ 
 # Compile in Windows
 
 Dependencies in Windows are managed either using 
@@ -108,7 +128,7 @@ cmake -G "Visual Studio 16" ^
       -DCMAKE_TOOLCHAIN_FILE=%CMAKE_TOOLCHAIN%  ^
       -DCMAKE_INSTALL_PREFIX=%cd%/install ^
       -DCMAKE_POLICY_DEFAULT_CMP0091=NEW
-      -D
+
 
 cmake --build build/PlotJuggler --config Release --parallel --target install
 ```
@@ -126,4 +146,21 @@ cmake -G "Visual Studio 16" ^
       -DCMAKE_INSTALL_PREFIX=%cd%/install
 
 cmake --build build/PlotJuggler --config Release --parallel --target install
+```
+
+## Create a Windows installer
+
+Change the **Qt** and **QtInstallerFramework** version as needed.
+
+```
+xcopy src\PlotJuggler\installer installer\ /Y /S /f /z 
+xcopy install\bin\*.* installer\io.plotjuggler.application\data /Y /S /f /z 
+
+C:\Qt\5.15.2\msvc2019_64\bin\windeployqt.exe --release ^
+   installer\io.plotjuggler.application\data\plotjuggler.exe 
+
+C:\Qt\Tools\QtInstallerFramework\4.1\bin\binarycreator.exe ^
+   --offline-only -c installer\config.xml -p installer ^
+   PlotJuggler-Windows-installer.exe
+
 ```
