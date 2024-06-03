@@ -31,13 +31,20 @@ set(LUA_LIB_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/src/lutf8lib.c 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/loadlib.c 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/linit.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/lua.c)
+    )
 set(LUA_LIB_INCLUDE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 
-add_compile_options(-fPIC)
+if(CMAKE_C_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+    add_compile_options(-fPIC)
+endif()
 
-add_library(lua_static STATIC ${LUA_LIB_SRCS})
+add_library(lua_static STATIC
+    ${LUA_LIB_SRCS}
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/lua.c
+)
 target_include_directories(lua_static PUBLIC ${LUA_LIB_INCLUDE})
+
+add_library(lua_objects OBJECT ${LUA_LIB_SRCS})
 
 if ( NOT WIN32 )
     set(LUA_DEFINITIONS LUA_USE_POSIX)
