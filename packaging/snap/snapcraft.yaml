@@ -1,0 +1,120 @@
+# SPDX-License-Identifier: MPL-2.0
+name: plotjuggler
+title: PlotJuggler 4
+base: core26
+adopt-info: plotjuggler
+summary: Explore, visualize and transform recorded and live data
+description: |
+  PlotJuggler 4 is an extensible C++20 and Qt 6 desktop application for
+  interactive time-series plotting, synchronized images and video, and 3D
+  visualization. Install loaders, streamers and tools through its marketplace
+  or supply compatible external plugins. This classic snap integrates with
+  sourced host ROS installations, custom message definitions and user plugins.
+license: MPL-2.0
+grade: stable
+confinement: classic
+
+platforms:
+  amd64:
+  arm64:
+
+apps:
+  plotjuggler:
+    command: bin/plotjuggler-launch
+    desktop: usr/share/applications/plotjuggler4.desktop
+
+parts:
+  snap-assets:
+    plugin: dump
+    source: snap/local
+    organize:
+      plotjuggler-launch: bin/plotjuggler-launch
+      plotjuggler4.desktop: usr/share/applications/plotjuggler4.desktop
+    stage:
+      - bin/plotjuggler-launch
+      - usr/share/applications/plotjuggler4.desktop
+
+  plotjuggler:
+    plugin: nil
+    source: .
+    build-attributes: [enable-patchelf]
+    prime:
+      - '-usr/share/plotjuggler/build-info'
+    build-packages:
+      # Native compiler and build drivers; Conan supplies its own library graph.
+      - build-essential
+      - gcc-13
+      - g++-13
+      - ninja-build
+      - git
+      - pkg-config
+      # venv provides pip; CMake/Conan/aqt versions are pinned in build.sh.
+      - python3-venv
+      - ca-certificates
+      - binutils
+      # Runtime game data for the separately built raster helper.
+      - doom-wad-shareware
+      # System targets imported by the downloaded Qt kit and QRhi compilation.
+      - libgl-dev
+      - libegl-dev
+      - libxkbcommon-dev
+      - libvulkan-dev
+      # Conan FFmpeg's system VAAPI wrapper and DRM development dependencies.
+      - libva-dev
+      - libdrm-dev
+    stage-packages:
+      # Qt is downloaded with aqt, outside Conan. Its system runtime is also
+      # visible to Qt build tools and deploy.py via the part-install library path.
+      - ca-certificates
+      - libstdc++6
+      - libgcc-s1
+      - libxcb-cursor0
+      - libxcb-icccm4
+      - libxcb-image0
+      - libxcb-keysyms1
+      - libxcb-randr0
+      - libxcb-render-util0
+      - libxcb-shape0
+      - libxcb-xinerama0
+      - libxcb-xkb1
+      - libxkbcommon0
+      - libxkbcommon-x11-0
+      - libx11-6
+      - libx11-xcb1
+      - libice6
+      - libsm6
+      - libxrender1
+      - libxcb1
+      - libfontconfig1
+      - libfreetype6
+      - libdbus-1-3
+      - libglib2.0-0t64
+      - libwayland-client0
+      - libwayland-cursor0
+      - libwayland-egl1
+      - libva2
+      - libva-drm2
+      - libssl3t64
+    override-pull: |
+      craftctl default
+      git -C "${CRAFT_PART_SRC}" submodule update --init --recursive -- \
+        3rdparty/Qt-Advanced-Docking 3rdparty/doomgeneric
+      . "${CRAFT_PART_SRC}/versions.env"
+      # Local-source refreshes can repeat this hook within the same lifecycle.
+      if [ "$(craftctl get version)" != "${PJ_APP_VERSION}" ]; then
+        craftctl set version="${PJ_APP_VERSION}"
+      fi
+    override-build: |
+      bash "${CRAFT_PART_SRC}/snap/local/build.sh"
+
+  gpu-2604:
+    after: [plotjuggler]
+    source: https://github.com/canonical/gpu-snap.git
+    #source-commit: 7c4091ddcea8f969b98a752c48841af9b0a659d8
+    source-depth: 1
+    plugin: dump
+    override-prime: |
+      craftctl default
+      "${CRAFT_PART_SRC}/bin/gpu-2604-cleanup" mesa-2604
+    prime:
+      - '-*'

@@ -1,0 +1,23 @@
+#!/bin/bash
+# SPDX-License-Identifier: MPL-2.0
+set -e
+# Restrict Qt plugin loading to this kit; older host IBus plugins can crash Qt.
+unset QT_IM_MODULE
+export QT_PLUGIN_PATH="${SNAP}/usr/plugins"
+export QT_QPA_PLATFORM_PLUGIN_PATH="${SNAP}/usr/plugins/platforms"
+export PYTHONHOME="${SNAP}/usr"
+export XDG_DATA_DIRS="${SNAP}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+#TODO: this is inspired by the appimage, we must verify if it's really necessary
+export GRPC_DEFAULT_SSL_ROOTS_FILE_PATH="${GRPC_DEFAULT_SSL_ROOTS_FILE_PATH:-/etc/ssl/certs/ca-certificates.crt}"
+# Snapcraft's classic patching disables default library directories. Prefer the
+# private runtime, then sourced ROS paths and explicit host graphics directories.
+paths=()
+IFS=: read -r -a inherited <<< "${LD_LIBRARY_PATH:-}"
+for directory in "${SNAP}/usr/lib" "${SNAP}/usr/lib/x86_64-linux-gnu" \
+  /snap/core26/current/lib/x86_64-linux-gnu "${inherited[@]}" \
+  /usr/lib/x86_64-linux-gnu /lib/x86_64-linux-gnu; do
+  test -z "${directory}" || paths+=("${directory}")
+done
+LD_LIBRARY_PATH="$(IFS=:; echo "${paths[*]}")"
+export LD_LIBRARY_PATH
+exec "${SNAP}/usr/bin/plotjuggler4" "${@}"

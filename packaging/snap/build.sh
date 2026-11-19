@@ -14,7 +14,7 @@ Usage: packaging/snap/build.sh [--context DIR] [--clean]
 The working tree and .git are copied, including staged, unstaged and untracked files.
 The root build/ directory and packaging/snap/dist/ are excluded.
 Existing context contents are retained; a non-empty context produces a warning.
-Packages are written to packaging/snap/dist/. Builds use LXD and provenance metadata.
+Packages are written to packaging/snap/dist/. Builds use LXD.
 EOF
 }
 
@@ -52,4 +52,5 @@ cd "${context}"
 if [[ "${clean}" == true ]]; then
   snapcraft clean plotjuggler --use-lxd
 fi
-snapcraft pack --use-lxd --output "${packaging}/dist"
+snapcraft pack --use-lxd
+mv -- plotjuggler_*.snap "${packaging}/dist/"
