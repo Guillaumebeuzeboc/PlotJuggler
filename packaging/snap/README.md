@@ -78,8 +78,8 @@ Conan recipes can select their own locked build tools, including CMake 4.4.2.
 The apt build list supplies native compiler/build drivers, Qt's imported
 OpenGL/EGL/XKB/Vulkan development targets, and FFmpeg's VAAPI/DRM system headers.
 Qt runtime-only XCB/Wayland/fontconfig/D-Bus/GLib dependencies are stage packages;
-their part-install paths are exposed during the build for Qt tools and ELF
-collection. There is no second apt CMake/pip or redundant download/archive CLI
+their part-install paths are exposed during the build for Qt tools.
+There is no second apt CMake/pip or redundant download/archive CLI
 toolchain; aqt and Conan use their Python download/extraction implementations.
 The kit is exactly **Qt 6.12.0 linux_gcc_64**, including matching private headers
 and platform plugins. The snap invokes the build-tree copy of
@@ -98,8 +98,19 @@ Outputs are under `${CRAFT_PART_BUILD}/build`.
 
 Upstream resolves the locked Conan graph through the anonymous
 `plotjuggler-conan` and ConanCenter remotes, building missing binaries from source.
-After the build, the snap queries the resolved Conan graph for dependency license
-collection; that graph stays in the build directory. The snap does not include
+After the build, a cache-only `conan install --no-remote --build=never` runs
+the custom `snap/local/runtime_deploy.py` deployer using the same profile,
+lockfile and settings. The deployer receives the part-install root as its output
+folder. It copies `*.so*` from runtime host dependencies' declared library
+directories into `usr/lib`, preserving symlinks and relative subdirectories.
+It also copies available host dependency `licenses/` directories into
+`usr/share/doc/plotjuggler/third-party`, including notices for statically linked
+dependencies. No graph JSON handoff is needed.
+
+Dependency executables and headers/static archives are not deployed. In
+particular, Python's `bin/python3.x` executable must not be flattened into
+`usr/lib`: it would collide with its standard-library directory `python3.x/`.
+The snap does not include
 the custom build-info directory, Conan profile or build-environment inventories.
 The lock pins recipe revisions, not a fully immutable Ubuntu package archive
 or every transitive pip version.
@@ -109,7 +120,14 @@ manually installs the application, sibling `pj-plugin-check`, Conan's matching
 CPython standard library/extensions, the Qt kit's entire runtime plugin tree, the desktop PNG
 and dependency license notices. The `snap-assets` dump part installs the launcher,
 and desktop entry from `snap/local` using `organize` mappings and a stage
-allowlist. `deploy.py` walks the runtime ELF dependencies. Snapcraft's
+allowlist. Qt shared libraries are copied from the kit's `lib/*.so*`; its headers,
+static archives and development tools are not copied. Python's standard library
+is copied separately because the deployer only selects shared libraries from
+library directories, not the complete Python runtime data. Qt's license directory
+is copied separately because Qt is installed outside Conan. System runtime libraries
+come from `stage-packages` and core26, not an `ldd`-based collector. Missing
+system dependencies must be declared in `stage-packages` and checked with lint
+and runtime tests. Snapcraft's
 `enable-patchelf` on the payload-producing part handles
 ELF interpreter and library-search-path patching for classic confinement.
 Qt plugins are included in the same part and patched by Snapcraft as well.
@@ -193,9 +211,9 @@ The `gpu-2604` part uses Canonical's `gpu-snap` repository pinned to commit
 `7c4091ddcea8f969b98a752c48841af9b0a659d8`. After the application is primed, it runs
 `gpu-2604-cleanup mesa-2604`. The maintained lists remove graphics libraries,
 drivers and supporting X11/XCB, Wayland, DRM and VAAPI files from the final snap.
-`deploy.py` preserves distro libraries' multiarch paths so those lists apply;
-Qt and Conan libraries remain in the private `usr/lib` directory. Its only
-library exclusion is glibc/the ELF loader, supplied by core26.
+APT stage packages retain their distro paths so those lists apply; Qt and Conan
+libraries remain in the private `usr/lib` directory. The ELF loader and glibc
+are supplied by core26; no custom glibc filename exclusion is needed.
 
 This is a cleanup-only part: its helper files are excluded from the payload.
 It does not install `mesa-2604`, add a GPU content interface or use a GPU

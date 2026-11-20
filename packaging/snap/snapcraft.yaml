@@ -38,8 +38,6 @@ parts:
     plugin: nil
     source: .
     build-attributes: [enable-patchelf]
-    prime:
-      - '-usr/share/plotjuggler/build-info'
     build-packages:
       # Native compiler and build drivers; Conan supplies its own library graph.
       - build-essential
@@ -63,8 +61,8 @@ parts:
       - libva-dev
       - libdrm-dev
     stage-packages:
-      # Qt is downloaded with aqt, outside Conan. Its system runtime is also
-      # visible to Qt build tools and deploy.py via the part-install library path.
+      # Qt is downloaded with aqt, outside Conan.
+      # It still depends on the following system libs.
       - ca-certificates
       - libstdc++6
       - libgcc-s1
@@ -110,7 +108,6 @@ parts:
   gpu-2604:
     after: [plotjuggler]
     source: https://github.com/canonical/gpu-snap.git
-    #source-commit: 7c4091ddcea8f969b98a752c48841af9b0a659d8
     source-depth: 1
     plugin: dump
     override-prime: |
