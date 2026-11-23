@@ -90,8 +90,8 @@ parts:
       #- libxcb-randr0
       #- libxcb-sync1
       #- libxcb-xfixes0
-      #- libva2
-      #- libva-drm2
+      - libva2
+      - libva-drm2
       # Optional SQL plugins present in the full Qt plugin tree.
       #- libfbclient2
       #- libodbc2
@@ -137,6 +137,9 @@ parts:
       craftctl default
       # Keep the SVG loader's libxml2 ABI and notices on older classic hosts.
       sed '\|/libxml2\.so\.16|d; \|^usr/share/doc/libxml2-16/|d' \
+        "${CRAFT_PART_SRC}/lists/mesa-2604.${CRAFT_ARCH_BUILD_FOR}.list" \
+        > "${CRAFT_PART_SRC}/lists/plotjuggler-gpu.${CRAFT_ARCH_BUILD_FOR}.list"
+      sed '\|/libva.*\.so\.2|d; \|^usr/share/doc/libva/|d' \
         "${CRAFT_PART_SRC}/lists/mesa-2604.${CRAFT_ARCH_BUILD_FOR}.list" \
         > "${CRAFT_PART_SRC}/lists/plotjuggler-gpu.${CRAFT_ARCH_BUILD_FOR}.list"
       "${CRAFT_PART_SRC}/bin/gpu-2604-cleanup" plotjuggler-gpu

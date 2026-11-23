@@ -6,8 +6,10 @@ unset QT_IM_MODULE
 export QT_PLUGIN_PATH="${SNAP}/usr/plugins"
 export PYTHONHOME="${SNAP}/usr"
 export XDG_DATA_DIRS="${SNAP}/usr/share:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+# core26 Glycin from the snap cannot rely on the host.
 # SNAP_USER_DATA is per user and revision: never launch a refreshed revision's
-# helpers from an older process. Glycin treats Exec as an absolute binary path.
+# helpers from an older process.
+# Glycin treats Exec as an absolute binary path.
 export GLYCIN_DATA_DIR="${SNAP_USER_DATA}/glycin"
 for config in "${SNAP}"/usr/share/glycin-loaders/*/conf.d/*.conf; do
   relative="${config#"${SNAP}/usr/share/"}"
