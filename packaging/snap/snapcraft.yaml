@@ -50,6 +50,8 @@ parts:
       - python3-venv
       - ca-certificates
       - binutils
+      # Generate the MIME database used by GTK/Glycin in the staged payload.
+      - shared-mime-info
       # Runtime game data for the separately built raster helper.
       - doom-wad-shareware
       # System targets imported by the downloaded Qt kit and QRhi compilation.
@@ -68,6 +70,11 @@ parts:
       - libfontconfig1
       - libgtk-3-0t64
       - libcups2t64
+      # GTK's pixbuf stack uses external Glycin helpers, not Qt image plugins.
+      - glycin-loaders
+      - shared-mime-info
+      # Required by the bundled SVG loader; Noble only provides libxml2.so.2.
+      - libxml2-16
       # XCB support libraries not supplied by core26.
       - libxcb-cursor0
       - libxcb-icccm4
@@ -128,6 +135,10 @@ parts:
     plugin: dump
     override-prime: |
       craftctl default
-      "${CRAFT_PART_SRC}/bin/gpu-2604-cleanup" mesa-2604
+      # Keep the SVG loader's libxml2 ABI and notices on older classic hosts.
+      sed '\|/libxml2\.so\.16|d; \|^usr/share/doc/libxml2-16/|d' \
+        "${CRAFT_PART_SRC}/lists/mesa-2604.${CRAFT_ARCH_BUILD_FOR}.list" \
+        > "${CRAFT_PART_SRC}/lists/plotjuggler-gpu.${CRAFT_ARCH_BUILD_FOR}.list"
+      "${CRAFT_PART_SRC}/bin/gpu-2604-cleanup" plotjuggler-gpu
     prime:
       - '-*'

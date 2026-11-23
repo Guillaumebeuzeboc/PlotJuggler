@@ -66,3 +66,7 @@ cp -a "${pyhome}"/lib/python[0-9]*/ "${dest}/usr/lib/"
 # WARNING: aqt doesn't ship licenses files.
 cp -a "${qt}"/lib/*.so* "${dest}/usr/lib/"
 cp -a "${qt}/plugins/." "${dest}/usr/plugins/"
+
+# APT archives contain MIME XML; their post-install cache generation is not run
+# when Snapcraft extracts stage-packages.
+update-mime-database "${dest}/usr/share/mime"

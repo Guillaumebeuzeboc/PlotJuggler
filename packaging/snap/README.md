@@ -91,6 +91,12 @@ plotjuggler
 
 No interface connections are required. The launcher preserves sourced ROS paths
 while preferring bundled libraries. Graphics drivers come from the host.
+GTK file dialogs use bundled Glycin image loaders. The build generates their
+MIME database; the launcher adds the snap's data path and writes relocated loader
+configuration under `${SNAP_USER_DATA}/glycin` (per user and revision), selected
+by `GLYCIN_DATA_DIR`. Helper executables use Snapcraft's patched ELF paths.
+GPU cleanup preserves `libxml2.so.16` and its notices for the SVG loader on
+Ubuntu 24.04, whose system libxml2 has a different ABI.
 
 ## Verify before release
 
