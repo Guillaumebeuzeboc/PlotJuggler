@@ -101,7 +101,27 @@ parts:
     override-build: |
       bash "${CRAFT_PART_SRC}/snap/local/build.sh"
 
+  pj-extensions:
+    plugin: nil
+    source: https://github.com/PlotJuggler/pj-plugin-registry.git
+    #TODO: get rid of this once this is upstream
+    source-commit: a2243ee41aee5a4bc5e7c6d9a042077a21ed8f20
+    source-depth: 1
+    build-packages: [python3, ca-certificates, git]
+    # Published plugins, including host-linked ROS payloads, must not be patched.
+    override-build: |
+      . "${CRAFT_PROJECT_DIR}/versions.env"
+      sdk_version=$(sed -n 's|^plotjuggler_sdk/||p' "${CRAFT_PROJECT_DIR}/conanfile.txt")
+      python3 "${CRAFT_PROJECT_DIR}/snap/local/install_extensions.py" \
+        "${CRAFT_PART_SRC}/registry.json" "${CRAFT_ARCH_BUILD_FOR}" \
+        "${CRAFT_PART_INSTALL}/usr/lib/plotjuggler/plugins" \
+        --app-version "${PJ_APP_VERSION}" --sdk-version "${sdk_version}"
+    stage:
+      - usr/lib/plotjuggler/plugins
+
   gpu-2604:
+    # TODO: Review cleanup for classic confinement: it removes required VAAPI (libva)
+    # libraries assuming mesa-2604 provides them, but minimal hosts may lack them.
     after: [plotjuggler]
     source: https://github.com/canonical/gpu-snap.git
     source-depth: 1

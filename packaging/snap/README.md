@@ -43,6 +43,13 @@ fresh-source check, and do not build concurrently in the same context.
   Qt shared libraries/plugins, icon and raster payload.
 - `local/runtime_deploy.py` deploys Conan shared libraries and available license
   notices. Dependency executables and development files are not deployed.
+- `extensions` downloads the 20 upstream-curated extensions from registry commit
+  `a2243ee41aee5a4bc5e7c6d9a042077a21ed8f20`, verifies SHA256 checksums, manifest
+  identities and app/SDK version floors, and bundles them under
+  `usr/lib/plotjuggler/plugins/` without ELF
+  patching. Update the part's `source-commit` to refresh versions; the selected
+  IDs are in `local/install_extensions.py`. All selected IDs have amd64/arm64
+  artifacts in this snapshot.
 - `snap-assets` installs the launcher and desktop entry. `enable-patchelf`
   handles ELF relocation; `gpu-2604` removes host-provided graphics libraries.
 - `stage-packages` supplies desktop/XCB dependencies, GTK3, CUPS and available Qt
@@ -69,7 +76,10 @@ plotjuggler --selftest-python
 plotjuggler /path/to/data
 ```
 
-Install extensions through **File → Marketplace** or use
+On startup, PJ4 seeds bundled extensions into the current user's writable store.
+Compatible newer marketplace versions are preserved. No install hook is needed.
+The bundle includes file loaders, streamers, message parsers and tools, including
+the ROS 2 subscriber. Install more through **File → Marketplace** or use
 `plotjuggler --plugin-dir /path/to/extensions`. PJ3 plugins are incompatible.
 For ROS, source the host installation and workspace before launching:
 
@@ -86,7 +96,8 @@ while preferring bundled libraries. Graphics drivers come from the host.
 
 - Build from a fresh context to expose stale libraries or deleted files.
 - Run `--help`, `--version`, `--selftest-python` and the raster helper.
-- Install a marketplace extension, restart, and load a file through it.
+- Check first-launch extension seeding, restart persistence and preservation of
+  a newer marketplace version; load a file with a bundled loader.
 - Exercise ROS with a real publisher and custom-message workspace.
 - Check X11/Wayland rendering; fixtures are under `packaging/smoke/`.
 - Review ELF dependencies and lint findings. GPU cleanup deliberately removes
