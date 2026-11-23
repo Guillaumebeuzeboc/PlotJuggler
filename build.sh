@@ -3,7 +3,12 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/versions.env"
 
-QT_DIR="${SCRIPT_DIR}/.qt/${PJ_QT_VERSION}/gcc_64"
+case "$(uname -m)" in
+  x86_64) QT_KIT=gcc_64 ;;
+  aarch64|arm64) QT_KIT=gcc_arm64 ;;
+  *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;;
+esac
+QT_DIR="${SCRIPT_DIR}/.qt/${PJ_QT_VERSION}/${QT_KIT}"
 
 usage() {
   printf '%s\n' \

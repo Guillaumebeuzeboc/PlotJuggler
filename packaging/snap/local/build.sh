@@ -14,13 +14,18 @@ python3 -m venv "${work}/tools"
 "${work}/tools/bin/pip" install 'aqtinstall==3.3.0' 'conan==2.34.0' 'cmake==3.31.10'
 export PATH="${work}/tools/bin:${PATH}"
 export CONAN_HOME="${work}/conan-home"
-export LD_LIBRARY_PATH="${dest}/usr/lib/x86_64-linux-gnu:${dest}/lib/x86_64-linux-gnu:${dest}/usr/lib"
+export LD_LIBRARY_PATH="${dest}/usr/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:${dest}/lib/${CRAFT_ARCH_TRIPLET_BUILD_FOR}:${dest}/usr/lib"
 
 export CC=gcc-13 CXX=g++-13
 conan profile detect --exist-ok
 
 bash "${CRAFT_PART_BUILD}/scripts/install_qt6.sh"
-qt="${CRAFT_PART_BUILD}/.qt/${PJ_QT_VERSION}/gcc_64"
+case "${CRAFT_ARCH_BUILD_FOR}" in
+  amd64) qt_kit=gcc_64 ;;
+  arm64) qt_kit=gcc_arm64 ;;
+  *) echo "Unsupported architecture: ${CRAFT_ARCH_BUILD_FOR}" >&2; exit 1 ;;
+esac
+qt="${CRAFT_PART_BUILD}/.qt/${PJ_QT_VERSION}/${qt_kit}"
 
 PJ_INSTALLATION=snap \
 PJ_VERSION="${PJ_APP_VERSION}" \
