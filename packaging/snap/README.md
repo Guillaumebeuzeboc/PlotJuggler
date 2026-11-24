@@ -1,7 +1,7 @@
 # PlotJuggler 4 snap
 
-Classic snap based on **core26**. The build scripts currently target **amd64**;
-the manifest's arm64 entry still needs architecture-specific Qt and library paths.
+Classic snap based on **core26**, configured for native **amd64** and **arm64**
+builds. Arm64 still needs end-to-end validation.
 Classic distribution requires Snap Store approval and does not support Ubuntu Core.
 
 ## Build
@@ -99,6 +99,28 @@ GPU cleanup preserves `libxml2.so.16` and its notices for the SVG loader on
 Ubuntu 24.04, whose system libxml2 has a different ABI.
 
 ## Verify before release
+
+`.github/workflows/snap.yml` builds natively on `ubuntu-latest` (amd64) and
+`ubuntu-24.04-arm`, using `canonical/craft-actions/snapcraft/setup`. It uploads
+snaps/logs and publishes to `latest/beta` after both architectures pass on
+pushes to `main` or manual runs on `main`. Pull requests never publish. Set the
+repository secret `STORE_LOGIN` to Snap Store credentials authorized for
+`plotjuggler` and the target channels. Manually run
+`.github/workflows/snap-promote.yaml` to promote `latest/beta` to
+`latest/candidate` without rebuilding.
+
+The smoke test checks Python, 40-second Xvfb
+startup with software Mesa, creation of a nonempty user extension directory on
+first launch, and native Wayland rendering through headless Weston using
+`packaging/smoke/wayland_check.sh`. It installs Xvfb, Weston and host Mesa
+packages; VAAPI runtime libraries come from the snap;
+this is not a minimal-host dependency test or a file-dialog/ROS integration test.
+
+To run it locally after installing those prerequisites and the snap:
+
+```bash
+bash packaging/snap/tests/smoke.sh
+```
 
 - Build from a fresh context to expose stale libraries or deleted files.
 - Run `--help`, `--version`, `--selftest-python` and the raster helper.
