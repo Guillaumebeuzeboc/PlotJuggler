@@ -49,7 +49,7 @@ usage() {
 # ThreadSanitizer in a separate build/tsan tree.
 # It guards the datastore worker-thread race regressions; the Linux CI `tsan` job
 # runs the same target set. TSan is wired via -DPJ_ENABLE_TSAN=ON on a normal
-# RelWithDebInfo configure, so the Conan dependency closure is reused as-is (no
+# Release configure, so the Conan dependency closure is reused as-is (no
 # Debug rebuild), except for the SDK, which must be built from source as well.
 PJ_SANITIZE="${PJ_SANITIZE-none}"
 TSAN=0
@@ -309,7 +309,7 @@ fi
 CMAKE_ARGS=(
   -S "$SCRIPT_DIR" -B "$BUILD_DIR"
   "-DCMAKE_TOOLCHAIN_FILE=$BUILD_DIR/conan_toolchain.cmake"
-  -DCMAKE_BUILD_TYPE=RelWithDebInfo
+  -DCMAKE_BUILD_TYPE=Release
   "-DCMAKE_PREFIX_PATH=${QT_DIR}"
   "-DPJ_SDK_LOCAL_DIR=${SDK_LOCAL_DIR}"
   "${CMAKE_CCACHE_ARGS[@]+"${CMAKE_CCACHE_ARGS[@]}"}" "${PJ_FLAG_ARGS[@]}"
@@ -401,15 +401,21 @@ fi
 # may have unrelated private remotes that host forked recipes under a user
 # channel; those must never shadow PJ4's intended dependency graph.
 if [[ "$SKIP_CONAN_INSTALL" == "0" ]]; then
-  # Dependencies stay RelWithDebInfo because Release luau built from source is
-  # not PIC and fails to link into PIE executables. Revisit when the Conan
-  # remote ships Release binaries.
   # The MSan lane resolves its OWN minimal requirement list. The app's conanfile
   # would drag FFmpeg, CPython and the rest into a from-source rebuild under
   # Clang + instrumented libc++, to instrument code its four Qt-free targets
   # never load. The lockfile is skipped with it: it pins the app graph, not this
   # one.
   conan_recipe="$SCRIPT_DIR"
+  # Linux: ConanCenter's luau recipe has no fPIC option and its prebuilt Release
+  # binary is not PIC, so it cannot link into PIE executables. -fPIC in luau's
+  # package_id makes Conan build it here (once, then cached) instead. Keep in sync
+  # with linux-ci.yml, linux-appimage-release.yml, Dockerfile.build and snap/local/build.sh.
+  CONAN_LUAU_PIC_ARGS=()
+  if [[ "$(uname -s)" == "Linux" ]]; then
+    CONAN_LUAU_PIC_ARGS=(-c "luau/*:tools.build:cxxflags=['-fPIC']"
+      -c "luau/*:tools.info.package_id:confs=['tools.build:cxxflags']")
+  fi
   conan_lock_args=(${CONAN_LOCKFILE_ARGS[@]+"${CONAN_LOCKFILE_ARGS[@]}"})
   if [[ "$MSAN" == "1" ]]; then
     conan_recipe="$SCRIPT_DIR/cmake/msan"
@@ -417,7 +423,8 @@ if [[ "$SKIP_CONAN_INSTALL" == "0" ]]; then
   fi
   conan install "$conan_recipe" --output-folder="$BUILD_DIR" --build=missing \
     ${conan_lock_args[@]+"${conan_lock_args[@]}"} \
-    -s build_type=RelWithDebInfo -s compiler.cppstd=20 \
+    -s build_type=Release -s compiler.cppstd=20 \
+    ${CONAN_LUAU_PIC_ARGS[@]+"${CONAN_LUAU_PIC_ARGS[@]}"} \
     ${CONAN_LANE_ARGS[@]+"${CONAN_LANE_ARGS[@]}"} "${CONAN_REMOTE_ARGS[@]}"
 elif [[ ! -f "$BUILD_DIR/conan_toolchain.cmake" ]]; then
   echo "Missing $BUILD_DIR/conan_toolchain.cmake; run Conan install first." >&2

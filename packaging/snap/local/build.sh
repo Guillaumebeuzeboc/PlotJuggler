@@ -35,10 +35,13 @@ CMAKE_GENERATOR=Ninja \
 bash "${CRAFT_PART_BUILD}/build.sh" --no-tests --no-demos --debug-info none
 
 # Deploy the already-built Conan runtime and dependency licenses.
+# Match the Release/Luau PIC settings used by the upstream build.sh.
 conan install "${CRAFT_PART_BUILD}" \
   --output-folder="${build}" --no-remote --build=never \
   --lockfile="${CRAFT_PART_BUILD}/conan.lock" --lockfile-partial \
-  -s build_type=RelWithDebInfo -s compiler.cppstd=20 \
+  -s build_type=Release -s compiler.cppstd=20 \
+  -c "luau/*:tools.build:cxxflags=['-fPIC']" \
+  -c "luau/*:tools.info.package_id:confs=['tools.build:cxxflags']" \
   --deployer="${src}/snap/local/runtime_deploy.py" \
   --deployer-folder="${dest}"
 
