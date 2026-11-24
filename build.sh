@@ -186,11 +186,10 @@ if [[ "$MSAN" == "1" ]]; then
   fi
   # A DEDICATED Conan cache, because the settings above do not isolate this lane.
   # The sanitizer flags travel in tools.build:*, which does NOT participate in
-  # package_id, and compiler.libcxx is dropped for C-only packages such as
-  # nanoarrow — so an ordinary Clang build and this instrumented one resolve to
-  # the SAME id. With a shared cache, --build=missing would reuse an
-  # uninstrumented nanoarrow here, and an instrumented one would contaminate
-  # later ordinary builds. Neither is detectable from the final executable: it
+  # package_id, and compiler.libcxx is dropped for C-only packages — so an
+  # ordinary Clang build and this instrumented one resolve to the SAME id. With a
+  # shared cache, --build=missing would reuse an uninstrumented package here, and
+  # an instrumented one would contaminate later ordinary builds. Neither is detectable from the final executable: it
   # still carries __msan_ symbols from our own code, so the lane would report a
   # confident, meaningless clean run.
   #
@@ -209,7 +208,7 @@ if [[ "$MSAN" == "1" ]]; then
   # And build the closure from source regardless of what that cache holds: a
   # cache is only trustworthy if nothing ever wrote an uninstrumented package
   # into it, which is an invariant no build can verify after the fact.
-  CONAN_LANE_ARGS+=(--build="nanoarrow/*" --build="gtest/*")
+  CONAN_LANE_ARGS+=(--build="gtest/*")
   CONAN_LANE_ARGS+=(
     -s compiler=clang
     -s "compiler.version=${PJ_SANITIZER_CLANG_VERSION:-22}"
@@ -275,7 +274,8 @@ PJ_FLAG_ARGS+=(
 # dependency binaries link unchanged. See docs/SANITIZERS.md.
 SANITIZER_COMPILER_ARGS=(-DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++)
 case "${PJ_SANITIZE}" in
-  none) PJ_FLAG_ARGS+=(-DPJ_ENABLE_SANITIZERS=OFF -DPJ_ENABLE_TSAN=OFF -DPJ_SDK_FORCE_SOURCE=OFF) ;;
+  # PJ_WARNINGS_AS_ERRORS explicitly: the sanitizer lanes force it OFF in the cache.
+  none) PJ_FLAG_ARGS+=(-DPJ_ENABLE_SANITIZERS=OFF -DPJ_ENABLE_TSAN=OFF -DPJ_SDK_FORCE_SOURCE=OFF -DPJ_WARNINGS_AS_ERRORS=ON) ;;
   asan) PJ_FLAG_ARGS+=(-DPJ_ENABLE_SANITIZERS=ON -DPJ_ENABLE_TSAN=OFF -DPJ_SDK_FORCE_SOURCE=ON "${SANITIZER_COMPILER_ARGS[@]}") ;;
   tsan) PJ_FLAG_ARGS+=(-DPJ_ENABLE_SANITIZERS=OFF -DPJ_ENABLE_TSAN=ON -DPJ_SDK_FORCE_SOURCE=ON "${SANITIZER_COMPILER_ARGS[@]}") ;;
   msan)

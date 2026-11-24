@@ -22,10 +22,10 @@ on:
         type: boolean
         default: true
       runner:
-        description: Runner label (macos-15 when Depot's macOS capacity is queued)
+        description: GitHub-hosted macOS runner label
         type: choice
-        options: [depot-macos-14, macos-15]
-        default: depot-macos-14
+        options: [macos-15, macos-14]
+        default: macos-15
   push:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
@@ -43,9 +43,12 @@ concurrency:
 
 jobs:
   macos-dmg:
-    runs-on: ${{ inputs.runner || 'depot-macos-14' }}
+    runs-on: ${{ inputs.runner || 'macos-15' }}
     timeout-minutes: 150
     env:
+      # sccache's GitHub Actions cache backend (the action exports the cache
+      # token). Every object is one cache entry in the repo's shared 10 GB.
+      SCCACHE_GHA_ENABLED: "true"
       PJ_SIGN: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.sign) }}
 
     steps:
@@ -93,8 +96,6 @@ jobs:
           clang --version
 
       - name: Install sccache
-        id: setup_sccache
-        continue-on-error: true
         uses: mozilla-actions/sccache-action@v0.0.10
         with:
           version: "v0.16.0"
@@ -115,8 +116,8 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: ~/.conan2
-          key: conan-macos-arm64-relwithdebinfo-${{ steps.conan_cache.outputs.hash }}
-          restore-keys: conan-macos-arm64-relwithdebinfo-v1-
+          key: conan-macos-arm64-release-${{ steps.conan_cache.outputs.hash }}
+          restore-keys: conan-macos-arm64-release-v1-
 
       - name: Seed Conan source download cache
         shell: bash
@@ -172,7 +173,7 @@ jobs:
           scripts/configure_conan_remote.sh
           conan install . --output-folder=build --build=missing -r=plotjuggler-conan -r=conancenter \
             --lockfile=conan.lock --lockfile-partial \
-            -s build_type=RelWithDebInfo -s compiler.cppstd=20 \
+            -s build_type=Release -s compiler.cppstd=20 \
             -c tools.cmake.cmaketoolchain:generator=Ninja
 
       - name: Trim Conan cache before saving
@@ -185,21 +186,19 @@ jobs:
         uses: actions/cache/save@v5
         with:
           path: ~/.conan2
-          key: conan-macos-arm64-relwithdebinfo-${{ steps.conan_cache.outputs.hash }}
+          key: conan-macos-arm64-release-${{ steps.conan_cache.outputs.hash }}
 
       - name: Build PlotJuggler 4 (app)
         shell: bash
         env:
-          SCCACHE_AVAILABLE: ${{ steps.setup_sccache.outcome == 'success' }}
+          # Release-only: the key that decrypts the empty-dock easter egg GIFs (pj_widgets). Absent on forks: no easter egg.
+          PJ_EASTER_EGG_KEY: ${{ secrets.PJ_EASTER_EGG_KEY }}
         run: |
-          launcher_args=()
-          if [[ "$SCCACHE_AVAILABLE" == "true" ]]; then
-            launcher_args=(-DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache)
-          fi
+          launcher_args=(-DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache)
           # PJ_BUILD_TESTS=OFF keeps the test-only fault injection out of the shipped binaries.
           cmake -S . -B build -G Ninja \
             "-DCMAKE_TOOLCHAIN_FILE=${PWD}/build/conan_toolchain.cmake" \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_BUILD_TYPE=Release \
             "-DCMAKE_PREFIX_PATH=${PWD}/.qt/${PJ_QT_VERSION}/macos" \
             -DPJ_INSTALLATION=macos \
             -DPJ_DEBUG_INFO=lines \
@@ -207,7 +206,7 @@ jobs:
             -DPJ_BUILD_DEMOS=OFF \
             "${launcher_args[@]}"
           cmake --build build --target pj_app --parallel
-          if [[ "$SCCACHE_AVAILABLE" == "true" ]]; then sccache --show-stats; fi
+          sccache --show-stats
 
       - name: Import the signing certificate
         if: env.PJ_SIGN == 'true'

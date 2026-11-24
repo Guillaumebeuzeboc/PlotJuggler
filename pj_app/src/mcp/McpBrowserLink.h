@@ -52,7 +52,9 @@ class McpBrowserLink : public QObject {
  private:
   void hello();
   void poll();
-  /// Answers message `seq` with `response` (empty: a notification, no answer).
+  /// Hangs up every call the current relay session relayed, and starts the next session.
+  void endSession();
+  /// Posts the answer to message `seq`; an empty `response` (a notification) is sent as null.
   void reply(qint64 seq, const QByteArray& response);
   /// Runs `next` after the current backoff, then doubles it (up to 10 s).
   void retryLater(void (McpBrowserLink::*next)());
@@ -65,12 +67,19 @@ class McpBrowserLink : public QObject {
   /// The relay's secret (its URL's `key`), sent on every request.
   QByteArray key_;
   QString title_;
-  // ponytail: in the browser a QNetworkReply never frees its fetch buffer (docs/TECHNICAL_NOTES.md);
+  // ponytail: in the browser a QNetworkReply never frees its fetch buffer (pj_runtime/docs/TECHNICAL_NOTES.md);
   // relay messages are tool calls of a few hundred bytes, so a session leaks kilobytes. Move to
   // BrowserFetch-style page fetches if a session ever relays megabytes.
   QNetworkAccessManager network_;
   QString id_;
   int backoff_ms_ = 0;
+  /// The connection of the calls the current relay session relayed (McpServer::handleRelayed). One
+  /// relay serves one agent session, so a relay that forgot this page or stopped answering has no
+  /// way left to deliver their answers: deleting this is that session's hang-up, as a closed socket
+  /// is a desktop client's.
+  QObject* session_ = new QObject(this);
+  /// Polls that failed in a row.
+  int failed_polls_ = 0;
 };
 
 }  // namespace PJ
