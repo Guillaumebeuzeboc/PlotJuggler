@@ -101,9 +101,14 @@ parts:
       git -C "${CRAFT_PART_SRC}" submodule update --init --recursive -- \
         3rdparty/Qt-Advanced-Docking 3rdparty/doomgeneric
       . "${CRAFT_PART_SRC}/versions.env"
+      version="${PJ_APP_VERSION}"
+      if ! git -C "${CRAFT_PART_SRC}" describe --tags --exact-match HEAD >/dev/null 2>&1; then
+        revision=$(git -C "${CRAFT_PART_SRC}" rev-parse --short HEAD)
+        version="${version}-g${revision}"
+      fi
       # Local-source refreshes can repeat this hook within the same lifecycle.
-      if [ "$(craftctl get version)" != "${PJ_APP_VERSION}" ]; then
-        craftctl set version="${PJ_APP_VERSION}"
+      if [ "$(craftctl get version)" != "${version}" ]; then
+        craftctl set version="${version}"
       fi
     override-build: |
       bash "${CRAFT_PART_SRC}/snap/local/build.sh"
@@ -127,19 +132,18 @@ parts:
       - usr/lib/plotjuggler/plugins
 
   gpu-2604:
-    # TODO: Review cleanup for classic confinement: it removes required VAAPI (libva)
-    # libraries assuming mesa-2604 provides them, but minimal hosts may lack them.
     after: [plotjuggler]
     source: https://github.com/canonical/gpu-snap.git
     source-depth: 1
     plugin: dump
     override-prime: |
       craftctl default
-      # Keep the SVG loader's libxml2 ABI and notices on older classic hosts.
-      sed '\|/libxml2\.so\.16|d; \|^usr/share/doc/libxml2-16/|d' \
-        "${CRAFT_PART_SRC}/lists/mesa-2604.${CRAFT_ARCH_BUILD_FOR}.list" \
-        > "${CRAFT_PART_SRC}/lists/plotjuggler-gpu.${CRAFT_ARCH_BUILD_FOR}.list"
-      sed '\|/libva.*\.so\.2|d; \|^usr/share/doc/libva/|d' \
+      # Keep bundled SVG/VAAPI libraries and their notices.
+      sed \
+        -e '\|/libxml2\.so\.16|d' \
+        -e '\|^usr/share/doc/libxml2-16/|d' \
+        -e '\|/libva.*\.so\.2|d' \
+        -e '\|^usr/share/doc/libva|d' \
         "${CRAFT_PART_SRC}/lists/mesa-2604.${CRAFT_ARCH_BUILD_FOR}.list" \
         > "${CRAFT_PART_SRC}/lists/plotjuggler-gpu.${CRAFT_ARCH_BUILD_FOR}.list"
       "${CRAFT_PART_SRC}/bin/gpu-2604-cleanup" plotjuggler-gpu
